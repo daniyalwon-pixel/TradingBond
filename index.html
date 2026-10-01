@@ -288,6 +288,37 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 .tabs-dock{flex:none;border-top:1px solid var(--rule);background:var(--paper);padding:8px 0}
 .tabs-dock .tabs{margin:0 14px}
 .list-head{border-top:0}
+
+/* doc layout: main + side (장전·매매) */
+.doc-pager{display:none}
+.doc-grid{display:grid;grid-template-columns:minmax(0,1fr) clamp(280px,30%,380px);gap:16px;max-width:1340px;margin:0 auto;align-items:start}
+.doc-grid.solo{grid-template-columns:minmax(0,1fr);max-width:900px}
+.doc-grid .sheet{max-width:none;margin:0}
+.side-pane{position:sticky;top:0;max-height:calc(100dvh - 96px);overflow-y:auto;border-radius:2px}
+.sheet.pre .row{grid-template-columns:1fr}
+.sheet.pre .lab{border-right:0;padding:12px 14px 0;font-size:12px;color:var(--accent);white-space:normal}
+.sheet.pre .val{padding:4px 14px 12px}
+.sheet.pre .val.edit{padding:0 2px 4px}
+.sheet.pre .lab br{display:none}
+.side-title{padding:10px 14px;font-weight:700;font-size:13px;color:var(--bandInk);background:var(--band);border-bottom:1px solid var(--rule)}
+.sheet.pre.weekly .side-title{background:var(--band2);color:var(--band2Ink)}
+.side-empty{padding:16px 14px;color:var(--ink3);font-size:13px}
+.doc-pager .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
+@media (min-width:821px) and (max-width:1120px){
+  .doc-grid{grid-template-columns:minmax(0,1fr)}
+  .side-pane{position:static;max-height:none}
+}
+@media (max-width:820px){
+  #scroll{overflow:hidden;display:flex;flex-direction:column;padding:0}
+  .doc-pager{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid var(--rule);background:var(--paper);flex:none}
+  .doc-pager button{flex:1;border:0;background:transparent;padding:7px 4px;border-radius:6px;font-size:13px;font-weight:600;color:var(--ink3)}
+  .doc-pager button.on{background:var(--sel);color:var(--accent)}
+  .doc-grid{flex:1;min-height:0;display:flex;gap:0;max-width:none;align-items:stretch;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
+  .doc-grid::-webkit-scrollbar{display:none}
+  .pane{flex:0 0 100%;width:100%;min-width:0;max-height:100%;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding-bottom:60px}
+  .side-pane{position:static;max-height:none}
+  .sheet.pre{border-left:0;border-right:0}
+}
 </style>
 </head>
 <body>
@@ -418,6 +449,8 @@ const FIELDS=[
   {k:'exec',label:'매매 실행'},
 ];
 const CKEYS=['c1','c2','c3'];
+const SIDE_KEYS=['preOpen','plan','exec'];
+let pageIdx=0,lastRendered=null;
 const IMGK=['c1','c2','c3','close','position','posNote','preOpen','plan','exec','body'];
 const TEXT_KEYS=['title','body','p1','p2','p3','pnl','c1','c2','c3','shot1Cap','shot2Cap','close','position','posNote','preOpen','plan','exec'];
 const blank=d=>({date:d,kind:kindOf(d),fav:false,title:'',body:'',bodyImg:[],day:isNote(d)?today():undefined,p1:'',p2:'',p3:'',pnl:'',c1:'',c2:'',c3:'',c1Img:[],c2Img:[],c3Img:[],closeImg:[],positionImg:[],posNoteImg:[],preOpenImg:[],planImg:[],execImg:[],shot1:null,shot2:null,shot1Cap:'',shot2Cap:'',close:'',position:'',posNote:'',preOpen:'',plan:'',exec:'',createdAt:Date.now(),updatedAt:0});
@@ -602,6 +635,20 @@ function updFav(){
   b.textContent=cur.fav?'★':'☆';b.classList.toggle('on',!!cur.fav);
   b.setAttribute('aria-pressed',!!cur.fav);b.title=cur.fav?'즐겨찾기 해제':'즐겨찾기';
 }
+function mountDoc(sc,nodes){
+  const same=lastRendered===(cur&&cur.date+'|'+mode);
+  const tops=same?[sc.scrollTop,...[...sc.querySelectorAll('.pane')].map(p=>p.scrollTop)]:null;
+  sc.innerHTML='';sc.append(...nodes);
+  lastRendered=cur.date+'|'+mode;
+  if(tops){sc.scrollTop=tops[0];sc.querySelectorAll('.pane').forEach((p,i)=>{if(tops[i+1]!=null)p.scrollTop=tops[i+1]})}
+}
+function setupPager(grid,pager){
+  const mark=()=>pager.querySelectorAll('button').forEach(b=>{const on=+b.dataset.p===pageIdx;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
+  mark();
+  if(mq.matches&&pageIdx)requestAnimationFrame(()=>{grid.scrollLeft=pageIdx*grid.clientWidth});
+  let t;grid.addEventListener('scroll',()=>{clearTimeout(t);t=setTimeout(()=>{const i=Math.round(grid.scrollLeft/Math.max(1,grid.clientWidth));if(i!==pageIdx){pageIdx=i;mark()}},60)},{passive:true});
+  pager.onclick=e=>{const b=e.target.closest('button[data-p]');if(!b)return;pageIdx=+b.dataset.p;mark();grid.scrollTo({left:pageIdx*grid.clientWidth,behavior:'smooth'})};
+}
 function renderNote(sc,edit){
   const sheet=document.createElement('div');sheet.className='sheet note';
   const[br,bv]=row('FICC','band');bv.classList.add('edit');
@@ -619,8 +666,10 @@ function renderNote(sc,edit){
     else{val.innerHTML=cur.body?`<div class="mt">${hl(cur.body)}</div>`:'';if(hasImg)val.append(thumbs('body',false))}
     sheet.append(r);
   }else sheet.insertAdjacentHTML('beforeend','<div class="row"><div class="lab"></div><div class="val" style="color:var(--ink3)">내용이 없습니다. 수정을 눌러 작성하세요.</div></div>');
-  sc.innerHTML='';sc.append(sheet);
-  if(edit&&!mq.matches)sc.insertAdjacentHTML('beforeend','<p class="hint">입력하면 자동 저장됩니다. 내용 칸에 커서를 두고 Ctrl+V로 캡처 이미지를 붙여넣을 수 있습니다.</p>');
+  const np=document.createElement('div');np.className='pane main-pane';np.append(sheet);
+  const ng=document.createElement('div');ng.className='doc-grid solo';ng.append(np);
+  mountDoc(sc,[ng]);
+  if(edit&&!mq.matches)np.insertAdjacentHTML('beforeend','<p class="hint">입력하면 자동 저장됩니다. 내용 칸에 커서를 두고 Ctrl+V로 캡처 이미지를 붙여넣을 수 있습니다.</p>');
   hydrateImages(sc);
 }
 function renderDoc(){
@@ -634,6 +683,8 @@ function renderDoc(){
   if(note)return renderNote(sc,mode==='edit');
   const sheet=document.createElement('div');sheet.className='sheet'+(week?' weekly':'');
   const edit=mode==='edit';
+  const side=document.createElement('div');side.className='sheet pre'+(week?' weekly':'');
+  side.innerHTML='<div class="side-title">장전 · 매매</div>';
 
   const[br,bv]=row(week?'주간':'일자','band');bv.classList.add('edit');
   bv.innerHTML=week
@@ -694,11 +745,19 @@ function renderDoc(){
       val.innerHTML=v?`<div class="mt">${hl(v)}</div>`:'';
       if(hasImg)val.append(thumbs(f.k,false));
     }
-    sheet.append(r);
+    (SIDE_KEYS.includes(f.k)?side:sheet).append(r);
   }
   if(!edit&&sheet.children.length===1&&!['p1','p2','p3'].some(k=>cur[k]))sheet.insertAdjacentHTML('beforeend','<div class="row"><div class="lab"></div><div class="val" style="color:var(--ink3)">내용이 없습니다. 수정을 눌러 작성하세요.</div></div>');
-  sc.innerHTML='';sc.append(sheet);
-  if(edit&&!mq.matches)sc.insertAdjacentHTML('beforeend','<p class="hint">입력하면 자동 저장됩니다. 캡처 후 Ctrl+V: 글 칸에 커서가 있으면 그 칸에, 아니면 빈 스크린샷 칸에 들어갑니다. Alt+↑/↓로 같은 목록의 이전·다음 기록으로 이동합니다.</p>');
+  const sideHas=side.children.length>1;
+  if(!sideHas)side.insertAdjacentHTML('beforeend','<div class="side-empty">장전 시황 · 매매 계획 · 실행 기록이 없습니다.</div>');
+  const p1=document.createElement('div');p1.className='pane main-pane';p1.append(sheet);
+  if(edit&&!mq.matches)p1.insertAdjacentHTML('beforeend','<p class="hint">입력하면 자동 저장됩니다. 캡처 후 Ctrl+V: 글 칸에 커서가 있으면 그 칸에, 아니면 빈 스크린샷 칸에 들어갑니다. Alt+↑/↓로 같은 목록의 이전·다음 기록으로 이동합니다.</p>');
+  const p2=document.createElement('div');p2.className='pane side-pane';p2.append(side);
+  const grid=document.createElement('div');grid.className='doc-grid';grid.append(p1,p2);
+  const pager=document.createElement('div');pager.className='doc-pager';pager.setAttribute('role','tablist');
+  pager.innerHTML=`<button type="button" data-p="0">시황 기록</button><button type="button" data-p="1">장전 · 매매${sideHas&&!edit?'<span class="dot"></span>':''}</button>`;
+  mountDoc(sc,[pager,grid]);
+  setupPager(grid,pager);
   hydrateImages(sc);
 }
 
@@ -792,6 +851,7 @@ async function openEntry(key){
   else{cur=blank(key);isNew=true;mode='edit'}
   setStatus(isNew?({week:'새 주간 기록',note:'새 FICC 노트',day:'새 기록'}[kindOf(key)]):'');
   $('#app').dataset.view='doc';
+  pageIdx=0;lastRendered=null;
   pushDocState(key);
   renderDoc();renderList();$('#scroll').scrollTop=0;
 }
