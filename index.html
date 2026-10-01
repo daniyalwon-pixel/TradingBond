@@ -304,7 +304,7 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 .sheet.pre.weekly .side-title{background:var(--band2);color:var(--band2Ink)}
 .side-empty{padding:16px 14px;color:var(--ink3);font-size:13px}
 .doc-pager .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
-@media (min-width:821px) and (max-width:1120px){
+@media (min-width:821px) and (max-width:1100px){
   .doc-grid{grid-template-columns:minmax(0,1fr)}
   .side-pane{position:static;max-height:none}
 }
@@ -319,6 +319,18 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
   .side-pane{position:static;max-height:none}
   .sheet.pre{border-left:0;border-right:0}
 }
+
+/* weekly list tint */
+.item.k-week{background:color-mix(in srgb,var(--band2) 32%,var(--paper))}
+.item.k-week:hover{background:color-mix(in srgb,var(--band2) 55%,var(--paper))}
+.item.k-week.on{background:color-mix(in srgb,var(--band2) 80%,var(--paper))}
+.list[data-sec=week] .month{background:color-mix(in srgb,var(--band2) 55%,var(--paper));color:var(--band2Ink)}
+.list-head[data-sec=week]{background:color-mix(in srgb,var(--band2) 45%,var(--bg))}
+
+.list-head .sec-name{font-size:14px;font-weight:700;color:var(--ink)}
+.list-head[data-sec=week] .sec-name{color:var(--band2Ink)}
+.list-head[data-sec=note] .sec-name{color:var(--band3Ink)}
+.list-head[data-sec=fav] .sec-name{color:#C9971A}
 </style>
 </head>
 <body>
@@ -340,7 +352,7 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
     </div>
     </div></div>
     
-    <div class="list-head"><span class="n" id="count"></span><button class="btn primary" id="newBtn" disabled>새 일간</button></div>
+    <div class="list-head"><b class="sec-name" id="secName"></b><span class="n" id="count"></span><button class="btn primary" id="newBtn" disabled>새 일간</button></div>
     <ul class="list" id="list"></ul>
     <div class="tabs-dock"><nav class="tabs" id="tabs" role="tablist" aria-label="문서 구분">
       <button type="button" role="tab" data-s="fav" aria-label="즐겨찾기" title="즐겨찾기">★</button>
@@ -410,7 +422,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-</dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.01-c · 섹션 이름 표시</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -568,6 +580,7 @@ function setStatus(msg,err){const s=$('#status');s.textContent=msg;s.classList.t
 const NEW_LABEL={day:'새 일간',week:'새 주간',note:'새 노트'};
 function renderTabs(){
   document.querySelectorAll('#tabs button').forEach(x=>{const on=x.dataset.s===section;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});
+  $('#secName').textContent={fav:'★ 즐겨찾기',week:'Weekly',day:'Daily',note:'FICC'}[section];
   const nb=$('#newBtn');nb.hidden=section==='fav';nb.textContent=NEW_LABEL[section]||'';
 }
 function itemHead(e){
@@ -579,6 +592,7 @@ function itemHead(e){
 function renderList(){
   renderTabs();
   const arr=filtered(),ul=$('#list');
+  ul.dataset.sec=section;$('.list-head').dataset.sec=section;
   const total=entries.filter(inSection).length;
   $('#count').textContent=`${arr.length}${total!==arr.length?` / ${total}`:''}건`;
   if(!arr.length){
@@ -735,11 +749,6 @@ function renderDoc(){
     }else if(edit){
       val.classList.add('edit');val.append(ta(f.k,f.ph,f.k==='pnl'?1:2));
       if(IMGK.includes(f.k)){const th=thumbs(f.k,true);th.classList.add('fthumbs');val.append(th)}
-      if(f.k==='position'&&!cur.position){
-        const prev=entries.filter(e=>isWeek(e.date)===week&&e.date<cur.date&&e.position).sort((a,b)=>a.date<b.date?1:-1)[0];
-        if(prev){const b=document.createElement('button');b.className='carry';b.textContent=`${week?`${+prev.date.slice(6)}주차`:md(prev.date)} 포지션 가져오기`;
-          b.onclick=()=>{cur.position=prev.position;scheduleSave();renderDoc()};val.append(b)}
-      }
     }else{
       if(f.k==='pnl'){val.classList.add('pnl-read');const pc=pnlClass(v);if(pc)val.classList.add(pc)}
       val.innerHTML=v?`<div class="mt">${hl(v)}</div>`:'';
