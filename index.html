@@ -422,7 +422,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.01-c · 섹션 이름 표시</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.07-a · 장전 시황 순서 변경</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -456,9 +456,9 @@ const FIELDS=[
   {k:'close',label:'장 마감\n시황'},
   {k:'position',label:'포지션'},
   {k:'posNote',label:'포지션\n특이사항'},
-  {k:'preOpen',label:'장전 시황'},
   {k:'plan',label:'장전 매매\n계획'},
   {k:'exec',label:'매매 실행'},
+  {k:'preOpen',label:'장전 시황'},
 ];
 const CKEYS=['c1','c2','c3'];
 const SIDE_KEYS=['preOpen','plan','exec'];
