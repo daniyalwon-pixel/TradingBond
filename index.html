@@ -331,6 +331,14 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 .list-head[data-sec=week] .sec-name{color:var(--band2Ink)}
 .list-head[data-sec=note] .sec-name{color:var(--band3Ink)}
 .list-head[data-sec=fav] .sec-name{color:#C9971A}
+
+.fetch-btn{display:inline-flex;align-items:center;gap:6px;margin:4px 14px 12px;padding:5px 11px;border:1px solid var(--rule);border-radius:6px;background:var(--bg);color:var(--accent);font-size:12px;font-weight:600}
+.fetch-btn:hover{border-color:var(--accent)}
+.fetch-btn.busy{color:var(--ink3);cursor:progress}
+.fetch-btn.busy svg{animation:mjpulse 1s ease-in-out infinite}
+@keyframes mjpulse{50%{opacity:.3}}
+.val:not(.edit)>.fetch-btn{margin:8px 0 2px}
+@media (prefers-reduced-motion:reduce){.fetch-btn.busy svg{animation:none}}
 </style>
 </head>
 <body>
@@ -422,7 +430,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.07-a · 장전 시황 순서 변경</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.08-a · 인포맥스 기사 불러오기</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -686,6 +694,36 @@ function renderNote(sc,edit){
   if(edit&&!mq.matches)np.insertAdjacentHTML('beforeend','<p class="hint">입력하면 자동 저장됩니다. 내용 칸에 커서를 두고 Ctrl+V로 캡처 이미지를 붙여넣을 수 있습니다.</p>');
   hydrateImages(sc);
 }
+const FETCH={
+  close:{type:'close',label:'인포맥스 [채권-마감] 불러오기'},
+  preOpen:{type:'pre',label:'인포맥스 [뉴욕 마켓 브리핑] 불러오기'},
+};
+function fetchBtn(k){
+  const b=document.createElement('button');b.type='button';b.className='fetch-btn';
+  b.innerHTML=`<svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true"><path d="M10 3v9m0 0l-3.5-3.5M10 12l3.5-3.5M4 15h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${FETCH[k].label}</span>`;
+  b.onclick=()=>fetchInfomax(k,b);return b;
+}
+async function fetchInfomax(k,btn){
+  if(!cur||isWeek(cur.date)||isNote(cur.date))return;
+  if(store!==Remote){alert('기사 불러오기는 Supabase 동기화로 로그인한 상태에서만 사용할 수 있습니다.');return}
+  const date=cur.date,span=btn.querySelector('span'),t0=span.textContent;
+  btn.disabled=true;btn.classList.add('busy');span.textContent='기사 찾는 중… (보통 10~30초)';
+  try{
+    const{data,error}=await Remote.c.functions.invoke('infomax',{body:{type:FETCH[k].type,date}});
+    if(error){let msg=error.message;try{const j=await error.context.json();if(j&&j.error)msg=j.error}catch{}throw new Error(msg)}
+    if(!data||data.error)throw new Error((data&&data.error)||'응답이 비어 있습니다.');
+    if(!cur||cur.date!==date)return;
+    const block=`${data.title}\n${data.url}\n\n${data.text}`;
+    const old=(cur[k]||'').trim();
+    if(old){
+      if(old.includes(data.url)){alert('이미 불러온 기사입니다.');return}
+      if(!confirm('이미 적힌 내용이 있습니다. 기사를 아래에 덧붙일까요?'))return;
+      cur[k]=old+'\n\n'+block;
+    }else cur[k]=block;
+    scheduleSave();renderDoc();setStatus('기사를 불러왔습니다');
+  }catch(e){alert('기사를 불러오지 못했습니다.\n'+(e&&e.message||e))}
+  finally{if(btn.isConnected){btn.disabled=false;btn.classList.remove('busy');span.textContent=t0}}
+}
 function renderDoc(){
   const sc=$('#scroll');
   if(!cur){$('#bar').hidden=true;sc.innerHTML='<div class="blank">왼쪽 목록에서 기록을 고르거나 새 기록을 만드세요.</div>';return}
@@ -741,7 +779,8 @@ function renderDoc(){
       sheet.append(r);continue;
     }
     const v=cur[f.k],cap=f.img?cur[f.k+'Cap']:'',hasImg=IMGK.includes(f.k)&&(cur[f.k+'Img']||[]).length;
-    if(!edit&&!v&&!cap&&!hasImg)continue;
+    const fetchT=!week&&FETCH[f.k];
+    if(!edit&&!v&&!cap&&!hasImg&&!fetchT)continue;
     const[r,val]=row(label);
     if(f.img){
       if(edit){val.classList.add('edit');val.append(slot(f.k));const c=ta(f.k+'Cap','스크린샷 설명 (선택)');c.classList.add('cap');val.append(c)}
@@ -754,11 +793,14 @@ function renderDoc(){
       val.innerHTML=v?`<div class="mt">${hl(v)}</div>`:'';
       if(hasImg)val.append(thumbs(f.k,false));
     }
+    if(fetchT)val.append(fetchBtn(f.k));
     (SIDE_KEYS.includes(f.k)?side:sheet).append(r);
   }
-  if(!edit&&sheet.children.length===1&&!['p1','p2','p3'].some(k=>cur[k]))sheet.insertAdjacentHTML('beforeend','<div class="row"><div class="lab"></div><div class="val" style="color:var(--ink3)">내용이 없습니다. 수정을 눌러 작성하세요.</div></div>');
-  const sideHas=side.children.length>1;
-  if(!sideHas)side.insertAdjacentHTML('beforeend','<div class="side-empty">장전 시황 · 매매 계획 · 실행 기록이 없습니다.</div>');
+  const hasAny=k=>cur[k]||(cur[k+'Img']||[]).length;
+  if(!edit&&!['p1','p2','p3','pnl','c1','c2','c3','shot1','shot2','shot1Cap','shot2Cap','close','position','posNote'].some(hasAny)&&!week)sheet.insertAdjacentHTML('beforeend','<div class="row"><div class="lab"></div><div class="val" style="color:var(--ink3)">아직 작성한 내용이 없습니다. 수정을 누르거나 아래 버튼으로 기사를 불러오세요.</div></div>');
+  else if(!edit&&sheet.children.length===1&&!['p1','p2','p3'].some(k=>cur[k]))sheet.insertAdjacentHTML('beforeend','<div class="row"><div class="lab"></div><div class="val" style="color:var(--ink3)">내용이 없습니다. 수정을 눌러 작성하세요.</div></div>');
+  const sideHas=SIDE_KEYS.some(hasAny);
+  if(!sideHas&&side.children.length===1)side.insertAdjacentHTML('beforeend','<div class="side-empty">장전 시황 · 매매 계획 · 실행 기록이 없습니다.</div>');
   const p1=document.createElement('div');p1.className='pane main-pane';p1.append(sheet);
   if(edit&&!mq.matches)p1.insertAdjacentHTML('beforeend','<p class="hint">입력하면 자동 저장됩니다. 캡처 후 Ctrl+V: 글 칸에 커서가 있으면 그 칸에, 아니면 빈 스크린샷 칸에 들어갑니다. Alt+↑/↓로 같은 목록의 이전·다음 기록으로 이동합니다.</p>');
   const p2=document.createElement('div');p2.className='pane side-pane';p2.append(side);
