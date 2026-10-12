@@ -339,6 +339,17 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 @keyframes mjpulse{50%{opacity:.3}}
 .val:not(.edit)>.fetch-btn{margin:8px 0 2px}
 @media (prefers-reduced-motion:reduce){.fetch-btn.busy svg{animation:none}}
+
+/* trade groups */
+.grp-row .lab{color:var(--accent)}
+.grp-edit,.grp-read{display:grid}
+.grp-item{border-top:1px dashed var(--rule)}
+.grp-item:first-child{border-top:0}
+.grp-sub{font-size:12px;font-weight:600;color:var(--ink2);padding:8px 14px 0}
+.grp-read .grp-sub{padding:8px 0 2px}
+.grp-read .grp-item{padding-bottom:6px}
+.grp-edit textarea{padding-top:4px}
+.sheet:not(.pre) .grp-row .lab{white-space:normal}
 </style>
 </head>
 <body>
@@ -430,7 +441,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.08-a · 인포맥스 기사 불러오기</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.09-a · 매매 실행 세분화</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -465,15 +476,19 @@ const FIELDS=[
   {k:'position',label:'포지션'},
   {k:'posNote',label:'포지션\n특이사항'},
   {k:'plan',label:'장전 매매\n계획'},
-  {k:'exec',label:'매매 실행'},
+  {k:'exec',label:'매매 실행\n(기존 기록)',legacy:true},
+  {k:'dayT',label:'데이 트레이딩',group:['dt1','dt2','dt3','dt4']},
+  {k:'swingT',label:'스윙 및 장기 트레이딩',group:['sw1','sw2','sw3','sw4']},
   {k:'preOpen',label:'장전 시황'},
 ];
 const CKEYS=['c1','c2','c3'];
-const SIDE_KEYS=['preOpen','plan','exec'];
+const GROUP_SUB=['매매 대상 및 사이즈','진입 근거','청산 및 최종 손익','복기'];
+const TRADE_KEYS=['dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
+const SIDE_KEYS=['preOpen','plan','exec',...TRADE_KEYS];
 let pageIdx=0,lastRendered=null;
-const IMGK=['c1','c2','c3','close','position','posNote','preOpen','plan','exec','body'];
-const TEXT_KEYS=['title','body','p1','p2','p3','pnl','c1','c2','c3','shot1Cap','shot2Cap','close','position','posNote','preOpen','plan','exec'];
-const blank=d=>({date:d,kind:kindOf(d),fav:false,title:'',body:'',bodyImg:[],day:isNote(d)?today():undefined,p1:'',p2:'',p3:'',pnl:'',c1:'',c2:'',c3:'',c1Img:[],c2Img:[],c3Img:[],closeImg:[],positionImg:[],posNoteImg:[],preOpenImg:[],planImg:[],execImg:[],shot1:null,shot2:null,shot1Cap:'',shot2Cap:'',close:'',position:'',posNote:'',preOpen:'',plan:'',exec:'',createdAt:Date.now(),updatedAt:0});
+const IMGK=['c1','c2','c3','close','position','posNote','preOpen','plan','exec','body','dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
+const TEXT_KEYS=['title','body','p1','p2','p3','pnl','c1','c2','c3','shot1Cap','shot2Cap','close','position','posNote','preOpen','plan','exec','dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
+const blank=d=>({date:d,kind:kindOf(d),fav:false,title:'',body:'',bodyImg:[],day:isNote(d)?today():undefined,p1:'',p2:'',p3:'',pnl:'',c1:'',c2:'',c3:'',c1Img:[],c2Img:[],c3Img:[],closeImg:[],positionImg:[],posNoteImg:[],preOpenImg:[],planImg:[],execImg:[],shot1:null,shot2:null,shot1Cap:'',shot2Cap:'',close:'',position:'',posNote:'',preOpen:'',plan:'',exec:'',dt1:'',dt2:'',dt3:'',dt4:'',sw1:'',sw2:'',sw3:'',sw4:'',createdAt:Date.now(),updatedAt:0});
 function norm(e){
   if(!e)return e;
   if(e.comment&&!e.c1&&!e.c2&&!e.c3)e.c1=e.comment;
@@ -754,6 +769,32 @@ function renderDoc(){
 
   for(const f of FIELDS){
     const label=week&&f.wlabel?f.wlabel:f.label;
+    if(f.legacy){
+      if(!(cur[f.k]||(cur[f.k+'Img']||[]).length))continue;
+    }
+    if(f.group){
+      const has=f.group.some(k=>cur[k]||(cur[k+'Img']||[]).length);
+      if(!edit&&!has)continue;
+      const[r,val]=row(label);r.classList.add('grp-row');
+      if(edit){
+        val.classList.add('edit');const box=document.createElement('div');box.className='grp-edit';
+        f.group.forEach((k,i)=>{
+          const g=document.createElement('div');g.className='grp-item';
+          g.innerHTML=`<div class="grp-sub">${i+1}. ${GROUP_SUB[i]}</div>`;
+          g.append(ta(k,'',1));const th=thumbs(k,true);th.classList.add('fthumbs');g.append(th);box.append(g);
+        });
+        val.append(box);
+      }else{
+        val.classList.add('grp-read');
+        f.group.forEach((k,i)=>{
+          const txt=cur[k],imgs=(cur[k+'Img']||[]).length;if(!txt&&!imgs)return;
+          const g=document.createElement('div');g.className='grp-item';
+          g.innerHTML=`<div class="grp-sub">${i+1}. ${GROUP_SUB[i]}</div>${txt?`<div class="mt">${hl(txt)}</div>`:''}`;
+          if(imgs)g.append(thumbs(k,false));val.append(g);
+        });
+      }
+      side.append(r);continue;
+    }
     if(f.multi){
       const has=f.multi.some(k=>cur[k]||(cur[k+'Img']||[]).length);
       if(!edit&&!has)continue;
