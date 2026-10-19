@@ -441,7 +441,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.09-a · 매매 실행 세분화</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.19-b · Weekly 장전 시황 제거</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -476,19 +476,21 @@ const FIELDS=[
   {k:'position',label:'포지션'},
   {k:'posNote',label:'포지션\n특이사항'},
   {k:'plan',label:'장전 매매\n계획'},
+  {k:'wkMkt',label:'전주 주간시황',weekOnly:true},
+  {k:'review',label:'복기',weekOnly:true},
   {k:'exec',label:'매매 실행\n(기존 기록)',legacy:true},
   {k:'dayT',label:'데이 트레이딩',group:['dt1','dt2','dt3','dt4']},
   {k:'swingT',label:'스윙 및 장기 트레이딩',group:['sw1','sw2','sw3','sw4']},
-  {k:'preOpen',label:'장전 시황'},
+  {k:'preOpen',label:'장전 시황',dayOnly:true},
 ];
 const CKEYS=['c1','c2','c3'];
 const GROUP_SUB=['매매 대상 및 사이즈','진입 근거','청산 및 최종 손익','복기'];
 const TRADE_KEYS=['dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
-const SIDE_KEYS=['preOpen','plan','exec',...TRADE_KEYS];
+const SIDE_KEYS=['preOpen','plan','wkMkt','review','exec',...TRADE_KEYS];
 let pageIdx=0,lastRendered=null;
-const IMGK=['c1','c2','c3','close','position','posNote','preOpen','plan','exec','body','dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
-const TEXT_KEYS=['title','body','p1','p2','p3','pnl','c1','c2','c3','shot1Cap','shot2Cap','close','position','posNote','preOpen','plan','exec','dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
-const blank=d=>({date:d,kind:kindOf(d),fav:false,title:'',body:'',bodyImg:[],day:isNote(d)?today():undefined,p1:'',p2:'',p3:'',pnl:'',c1:'',c2:'',c3:'',c1Img:[],c2Img:[],c3Img:[],closeImg:[],positionImg:[],posNoteImg:[],preOpenImg:[],planImg:[],execImg:[],shot1:null,shot2:null,shot1Cap:'',shot2Cap:'',close:'',position:'',posNote:'',preOpen:'',plan:'',exec:'',dt1:'',dt2:'',dt3:'',dt4:'',sw1:'',sw2:'',sw3:'',sw4:'',createdAt:Date.now(),updatedAt:0});
+const IMGK=['c1','c2','c3','close','position','posNote','preOpen','plan','wkMkt','review','exec','body','dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
+const TEXT_KEYS=['title','body','p1','p2','p3','pnl','c1','c2','c3','shot1Cap','shot2Cap','close','position','posNote','preOpen','plan','wkMkt','review','exec','dt1','dt2','dt3','dt4','sw1','sw2','sw3','sw4'];
+const blank=d=>({date:d,kind:kindOf(d),fav:false,title:'',body:'',bodyImg:[],day:isNote(d)?today():undefined,p1:'',p2:'',p3:'',pnl:'',c1:'',c2:'',c3:'',c1Img:[],c2Img:[],c3Img:[],closeImg:[],positionImg:[],posNoteImg:[],preOpenImg:[],planImg:[],execImg:[],shot1:null,shot2:null,shot1Cap:'',shot2Cap:'',close:'',position:'',posNote:'',preOpen:'',plan:'',wkMkt:'',review:'',exec:'',dt1:'',dt2:'',dt3:'',dt4:'',sw1:'',sw2:'',sw3:'',sw4:'',createdAt:Date.now(),updatedAt:0});
 function norm(e){
   if(!e)return e;
   if(e.comment&&!e.c1&&!e.c2&&!e.c3)e.c1=e.comment;
@@ -712,6 +714,7 @@ function renderNote(sc,edit){
 const FETCH={
   close:{type:'close',label:'인포맥스 [채권-마감] 불러오기'},
   preOpen:{type:'pre',label:'인포맥스 [뉴욕 마켓 브리핑] 불러오기'},
+  wkMkt:{type:'weekly',label:'인포맥스 [채권-주간] 불러오기',week:true},
 };
 function fetchBtn(k){
   const b=document.createElement('button');b.type='button';b.className='fetch-btn';
@@ -719,15 +722,15 @@ function fetchBtn(k){
   b.onclick=()=>fetchInfomax(k,b);return b;
 }
 async function fetchInfomax(k,btn){
-  if(!cur||isWeek(cur.date)||isNote(cur.date))return;
+  if(!cur||isNote(cur.date)||!!FETCH[k].week!==isWeek(cur.date))return;
   if(store!==Remote){alert('기사 불러오기는 Supabase 동기화로 로그인한 상태에서만 사용할 수 있습니다.');return}
-  const date=cur.date,span=btn.querySelector('span'),t0=span.textContent;
+  const docKey=cur.date,date=FETCH[k].week?addDays(weekStart(docKey),-1):docKey,span=btn.querySelector('span'),t0=span.textContent;
   btn.disabled=true;btn.classList.add('busy');span.textContent='기사 찾는 중… (보통 10~30초)';
   try{
     const{data,error}=await Remote.c.functions.invoke('infomax',{body:{type:FETCH[k].type,date}});
     if(error){let msg=error.message;try{const j=await error.context.json();if(j&&j.error)msg=j.error}catch{}throw new Error(msg)}
     if(!data||data.error)throw new Error((data&&data.error)||'응답이 비어 있습니다.');
-    if(!cur||cur.date!==date)return;
+    if(!cur||cur.date!==docKey)return;
     const block=`${data.title}\n${data.url}\n\n${data.text}`;
     const old=(cur[k]||'').trim();
     if(old){
@@ -769,6 +772,8 @@ function renderDoc(){
 
   for(const f of FIELDS){
     const label=week&&f.wlabel?f.wlabel:f.label;
+    if(f.weekOnly&&!week)continue;
+    if(f.dayOnly&&week&&!(cur[f.k]||(cur[f.k+'Img']||[]).length))continue;
     if(f.legacy){
       if(!(cur[f.k]||(cur[f.k+'Img']||[]).length))continue;
     }
@@ -820,7 +825,7 @@ function renderDoc(){
       sheet.append(r);continue;
     }
     const v=cur[f.k],cap=f.img?cur[f.k+'Cap']:'',hasImg=IMGK.includes(f.k)&&(cur[f.k+'Img']||[]).length;
-    const fetchT=!week&&FETCH[f.k];
+    const fetchT=FETCH[f.k]&&(!!FETCH[f.k].week===week);
     if(!edit&&!v&&!cap&&!hasImg&&!fetchT)continue;
     const[r,val]=row(label);
     if(f.img){
