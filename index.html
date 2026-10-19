@@ -350,6 +350,42 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 .grp-read .grp-item{padding-bottom:6px}
 .grp-edit textarea{padding-top:4px}
 .sheet:not(.pre) .grp-row .lab{white-space:normal}
+
+/* Trade */
+.bar[hidden]{display:none !important}
+.trade-tg{margin-left:6px;border:1px solid color-mix(in srgb,var(--band2Ink) 35%,var(--rule));background:transparent;color:var(--band2Ink);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+.trade-tg:hover{border-color:var(--band2Ink)}
+.trade-tg.on{background:var(--band2Ink);color:var(--paper);border-color:var(--band2Ink)}
+.trade-tg[hidden]{display:none}
+.item .tsum{font-size:11px;font-weight:600;color:var(--band2Ink);max-width:55%}
+.muted{color:var(--ink3)}
+.trade-view{max-width:900px;margin:0 auto}
+.trade-head{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--band2);color:var(--band2Ink);border:1px solid var(--rule);border-bottom:0}
+.trade-head .back{display:none}
+.trade-head>div{flex:1;min-width:0}
+.trade-title{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.trade-sub{font-size:13px;opacity:.75}
+.trade-day{background:var(--paper);border:1px solid var(--rule);border-top:0}
+.trade-day>header{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule);background:color-mix(in srgb,var(--band2) 30%,var(--paper))}
+.trade-date{border:0;background:none;padding:0;font-size:16px;font-weight:700;color:var(--ink);text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
+.trade-date:hover{text-decoration-color:var(--accent);color:var(--accent)}
+.trade-date small{font-size:12px;color:var(--ink3);font-weight:500}
+.trade-pnl{margin-left:auto;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trade-set{padding:4px 14px 10px}
+.trade-set+.trade-set{border-top:1px solid var(--rule)}
+.trade-set-t{font-size:12px;font-weight:700;color:var(--accent);padding:8px 0 0}
+.trade-set .grp-sub{padding:8px 0 2px}
+.trade-set .thumbs{padding:6px 0 2px}
+.trade-set .thumb{width:min(360px,100%)}
+.trade-empty{padding:18px 16px;background:var(--paper);border:1px solid var(--rule);border-top:0;color:var(--ink3)}
+@media (max-width:820px){
+  .trade-view{max-width:none;overflow-y:auto;flex:1;min-height:0;overscroll-behavior-y:contain;padding-bottom:60px}
+  .trade-head{position:sticky;top:0;z-index:2;padding:10px 12px;border-left:0;border-right:0}
+  .trade-head .back{display:inline-block}
+  .trade-title{font-size:18px}
+  .trade-day,.trade-empty{border-left:0;border-right:0}
+  .trade-set .thumb{width:100%}
+}
 </style>
 </head>
 <body>
@@ -371,7 +407,7 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
     </div>
     </div></div>
     
-    <div class="list-head"><b class="sec-name" id="secName"></b><span class="n" id="count"></span><button class="btn primary" id="newBtn" disabled>새 일간</button></div>
+    <div class="list-head"><b class="sec-name" id="secName"></b><button type="button" class="trade-tg" id="tradeBtn" aria-pressed="false" hidden>Trade</button><span class="n" id="count"></span><button class="btn primary" id="newBtn" disabled>새 일간</button></div>
     <ul class="list" id="list"></ul>
     <div class="tabs-dock"><nav class="tabs" id="tabs" role="tablist" aria-label="문서 구분">
       <button type="button" role="tab" data-s="fav" aria-label="즐겨찾기" title="즐겨찾기">★</button>
@@ -441,7 +477,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.19-b · Weekly 장전 시황 제거</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.19-c · Weekly Trade 모아보기</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -582,7 +618,8 @@ function hl(text){
 }
 function pnlClass(s){const m=String(s||'').match(/([+\-−▲▼]?)\s*(\d[\d,]*(?:\.\d+)?)/);if(!m)return'';if(!parseFloat(m[2].replace(/,/g,'')))return'';return/[-−▼]/.test(m[1])?'down':'up'}
 function hay(e){return((isWeek(e.date)?e.date+' 주간 weekly ':isNote(e.date)?(e.day||'')+' ficc ':e.date+' daily ')+TEXT_KEYS.map(k=>e[k]||'').join(' ')).toLowerCase()}
-let section='day';
+let section='day',wkView='doc',tradeWeek=null;
+try{if(localStorage.getItem('mj-wkview')==='trade')wkView='trade'}catch{}
 try{const s0=localStorage.getItem('mj-section');if(['day','week','fav','note'].includes(s0))section=s0}catch{}
 const inSection=e=>section==='fav'?!!e.fav:kindOf(e.date)===section;
 const byDate=(a,b)=>{const x=sOf(a),y=sOf(b);return x<y?1:x>y?-1:(b.createdAt||0)-(a.createdAt||0)};
@@ -603,10 +640,12 @@ function setStatus(msg,err){const s=$('#status');s.textContent=msg;s.classList.t
 
 /* ================= lists ================= */
 const NEW_LABEL={day:'새 일간',week:'새 주간',note:'새 노트'};
+const tradeMode=()=>section==='week'&&wkView==='trade';
 function renderTabs(){
+  const tb=$('#tradeBtn');tb.hidden=section!=='week';tb.classList.toggle('on',tradeMode());tb.setAttribute('aria-pressed',tradeMode());
   document.querySelectorAll('#tabs button').forEach(x=>{const on=x.dataset.s===section;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});
   $('#secName').textContent={fav:'★ 즐겨찾기',week:'Weekly',day:'Daily',note:'FICC'}[section];
-  const nb=$('#newBtn');nb.hidden=section==='fav';nb.textContent=NEW_LABEL[section]||'';
+  const nb=$('#newBtn');nb.hidden=section==='fav'||tradeMode();nb.textContent=NEW_LABEL[section]||'';
 }
 function itemHead(e){
   const k=kindOf(e.date);
@@ -614,8 +653,90 @@ function itemHead(e){
   if(k==='note')return`<span class="d">${e.day?md(e.day):''}</span><span class="w">${e.day?wd(e.day):''}</span>`;
   return`<span class="d">${md(e.date)}</span><span class="w">${wd(e.date)}</span>`;
 }
+/* ---- Trade: 주간별 Daily 데이·스윙 트레이딩 모아보기 ---- */
+const TRADE_SETS=[['데이 트레이딩',['dt1','dt2','dt3','dt4']],['스윙 및 장기 트레이딩',['sw1','sw2','sw3','sw4']]];
+const hasK=(e,k)=>!!(e[k]||(e[k+'Img']||[]).length);
+const tradeHas=e=>TRADE_KEYS.some(k=>hasK(e,k))||hasK(e,'exec');
+function tradeDays(wk){
+  const s0=weekStart(wk),e0=addDays(s0,6);
+  return entries.filter(e=>kindOf(e.date)==='day'&&e.date>=s0&&e.date<=e0&&tradeHas(e)).sort((a,b)=>a.date<b.date?-1:1);
+}
+function tradeWeeks(){
+  const set=new Set();
+  entries.forEach(e=>{const k=kindOf(e.date);if(k==='week')set.add(e.date);else if(k==='day'&&tradeHas(e))set.add(isoWeek(e.date))});
+  const t=toks(),f=$('#from').value,to=$('#to').value;
+  return [...set].sort().reverse().map(wk=>({wk,days:tradeDays(wk)})).filter(({wk,days})=>{
+    const s0=weekStart(wk),e0=addDays(s0,6);
+    if(f&&e0<f||to&&s0>to)return false;
+    if(!t.length)return true;
+    const h=(wk+' trade '+days.map(d=>d.date+' '+[...TRADE_KEYS,'exec'].map(k=>d[k]||'').join(' ')).join(' ')).toLowerCase();
+    return t.every(x=>h.includes(x));
+  });
+}
+function renderTradeList(){
+  const ul=$('#list'),arr=tradeWeeks();
+  $('#count').textContent=`${arr.length}주`;
+  if(!arr.length){ul.innerHTML=`<li class="empty">${toks().length||$('#from').value||$('#to').value?'조건에 맞는 주간이 없습니다.':'Daily 문서의 데이·스윙 트레이딩 칸에 기록하면 주간별로 모여 여기에 나타납니다.'}</li>`;return}
+  let html='',m='';
+  for(const {wk,days} of arr){
+    const mm=weekStart(wk).slice(0,7);
+    if(mm!==m){m=mm;html+=`<li class="month">${mm.slice(0,4)}년 ${+mm.slice(5)}월</li>`}
+    const nd=days.filter(d=>['dt1','dt2','dt3','dt4'].some(k=>hasK(d,k))).length,ns=days.filter(d=>['sw1','sw2','sw3','sw4'].some(k=>hasK(d,k))).length;
+    const first=days.map(d=>d.dt1||d.sw1||d.exec||'').find(Boolean)||'';
+    const sum=days.length?`${days.length}일 기록 · 데이 ${nd} · 스윙 ${ns}`:'트레이딩 기록 없음';
+    html+=`<li><button class="item k-week trade-item${tradeWeek===wk?' on':''}" data-w="${wk}">
+      <div class="r1"><span class="d">${+wk.slice(6)}주차</span><span class="w">${weekRange(wk)}</span><span class="p tsum">${sum}</span></div>
+      <div class="t">${first?hl(first.split('\n')[0]):'<span class="muted">—</span>'}</div></button></li>`;
+  }
+  ul.innerHTML=html;
+}
+async function openTrade(wk){
+  await settle();
+  cur=null;isNew=false;tradeWeek=wk;
+  $('#app').dataset.view='doc';lastRendered=null;
+  pushDocState('T-'+wk);
+  renderDoc();renderList();$('#scroll').scrollTop=0;
+}
+function renderTrade(){
+  const sc=$('#scroll'),wk=tradeWeek,days=tradeDays(wk);
+  $('#bar').hidden=true;
+  const pnlTxt=d=>(d.pnl||'').split('\n')[0];
+  let html=`<div class="trade-view"><div class="trade-head"><button type="button" class="btn back trade-back">목록</button>
+    <div><div class="trade-title">${wk.slice(0,4)} · ${+wk.slice(6)}주차 Trade</div><div class="trade-sub">${weekRange(wk)} · Daily 데이·스윙 트레이딩 모아보기</div></div>
+    ${entries.some(e=>e.date===wk)?`<button type="button" class="btn trade-open-wk">주간 문서</button>`:''}</div>`;
+  if(!days.length)html+='<div class="trade-empty">이 주의 Daily 문서에는 데이·스윙 트레이딩 기록이 없습니다.</div>';
+  for(const d of days){
+    html+=`<section class="trade-day"><header><button type="button" class="trade-date" data-d="${d.date}">${md(d.date)} <small>${wd(d.date)}</small></button>${pnlTxt(d)?`<span class="trade-pnl ${pnlClass(d.pnl)}">${esc(pnlTxt(d))}</span>`:''}</header>`;
+    for(const [title,keys] of TRADE_SETS){
+      const items=keys.map((k,i)=>[k,i]).filter(([k])=>hasK(d,k));
+      if(!items.length)continue;
+      html+=`<div class="trade-set"><div class="trade-set-t">${title}</div>`;
+      for(const [k,i] of items){
+        html+=`<div class="grp-item"><div class="grp-sub">${i+1}. ${GROUP_SUB[i]}</div>${d[k]?`<div class="mt">${hl(d[k])}</div>`:''}${(d[k+'Img']||[]).length?`<div class="thumbs">${d[k+'Img'].map(id=>`<figure class="thumb"><img data-img="${esc(id)}" alt=""></figure>`).join('')}</div>`:''}</div>`;
+      }
+      html+='</div>';
+    }
+    if(hasK(d,'exec'))html+=`<div class="trade-set"><div class="trade-set-t">매매 실행 (기존 기록)</div><div class="grp-item">${d.exec?`<div class="mt">${hl(d.exec)}</div>`:''}${(d.execImg||[]).length?`<div class="thumbs">${d.execImg.map(id=>`<figure class="thumb"><img data-img="${esc(id)}" alt=""></figure>`).join('')}</div>`:''}</div></div>`;
+    html+='</section>';
+  }
+  html+='</div>';
+  sc.innerHTML=html;
+  sc.querySelector('.trade-back').onclick=()=>goList();
+  const ow=sc.querySelector('.trade-open-wk');if(ow)ow.onclick=()=>{tradeWeek=null;openEntry(wk)};
+  sc.querySelectorAll('.trade-date').forEach(b=>b.onclick=()=>{tradeWeek=null;openEntry(b.dataset.d)});
+  hydrateImages(sc);
+}
+$('#tradeBtn').onclick=()=>{
+  wkView=wkView==='trade'?'doc':'trade';try{localStorage.setItem('mj-wkview',wkView)}catch{}
+  renderList();$('#list').scrollTop=0;
+  if(!mq.matches){
+    if(wkView==='trade'){const f=tradeWeeks()[0];if(f)openTrade(f.wk)}
+    else if(tradeWeek){tradeWeek=null;const f=filtered()[0];if(f)openEntry(f.date);else renderDoc()}
+  }
+};
 function renderList(){
   renderTabs();
+  if(tradeMode()){const ul=$('#list');ul.dataset.sec='week';$('.list-head').dataset.sec='week';return renderTradeList()}
   const arr=filtered(),ul=$('#list');
   ul.dataset.sec=section;$('.list-head').dataset.sec=section;
   const total=entries.filter(inSection).length;
@@ -638,7 +759,7 @@ function renderList(){
   }
   ul.innerHTML=html;
 }
-$('#list').addEventListener('click',e=>{const b=e.target.closest('.item');if(b)openEntry(b.dataset.d)});
+$('#list').addEventListener('click',e=>{const b=e.target.closest('.item');if(!b)return;if(b.dataset.w)openTrade(b.dataset.w);else openEntry(b.dataset.d)});
 $('#tabs').addEventListener('click',e=>{
   const b=e.target.closest('button[data-s]');if(!b||b.dataset.s===section)return;
   section=b.dataset.s;try{localStorage.setItem('mj-section',section)}catch{}
@@ -744,6 +865,7 @@ async function fetchInfomax(k,btn){
 }
 function renderDoc(){
   const sc=$('#scroll');
+  if(!cur&&tradeWeek)return renderTrade();
   if(!cur){$('#bar').hidden=true;sc.innerHTML='<div class="blank">왼쪽 목록에서 기록을 고르거나 새 기록을 만드세요.</div>';return}
   const week=isWeek(cur.date),note=isNote(cur.date),di=$('#dateIn');
   $('#bar').hidden=false;
@@ -943,6 +1065,7 @@ async function settle(){await flush();while(saving)await sleep(80)}
 async function openEntry(key){
   if(cur&&cur.date===key&&!mq.matches)return;
   await settle();
+  tradeWeek=null;
   const ex=entries.find(e=>e.date===key);
   if(ex){cur=norm(JSON.parse(JSON.stringify(ex)));isNew=false;mode=mq.matches?'read':'edit'}
   else{cur=blank(key);isNew=true;mode='edit'}
@@ -1142,7 +1265,7 @@ async function boot(){
     if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}
   $('#newBtn').disabled=false;
   await refresh(true);
-  if(!mq.matches&&!cur){const f=filtered()[0];if(f)openEntry(f.date)}
+  if(!mq.matches&&!cur){if(tradeMode()){const f=tradeWeeks()[0];if(f)openTrade(f.wk)}else{const f=filtered()[0];if(f)openEntry(f.date)}}
 }
 if(history.state&&history.state.mj)history.replaceState(null,'');
 boot();
