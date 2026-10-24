@@ -243,7 +243,7 @@ dialog::backdrop{background:rgba(10,20,30,.5)}
 }
 
 /* section tabs */
-.tabs{display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:4px;margin:0 14px 8px;padding:3px;background:var(--bg);border:1px solid var(--rule);border-radius:8px}
+.tabs{display:grid;grid-template-columns:40px 1fr 1fr 1fr 1fr;gap:4px;margin:0 14px 8px;padding:3px;background:var(--bg);border:1px solid var(--rule);border-radius:8px}
 .tabs button{border:0;background:transparent;border-radius:6px;padding:6px 0;font-size:13px;font-weight:600;color:var(--ink2)}
 .tabs button:hover{color:var(--ink)}
 .tabs button.on{background:var(--paper);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.12)}
@@ -407,6 +407,9 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 .tp td{width:calc(50% - 42px)}
 .tp td.nil{color:var(--ink3)}
 .tp .trade-date{font-size:14px}
+
+.tabs button[data-s=trade]{font-size:12px;letter-spacing:.02em}
+.tabs button[data-s=trade].on{color:var(--band3Ink);background:color-mix(in srgb,var(--band3) 70%,var(--paper))}
 </style>
 </head>
 <body>
@@ -428,10 +431,11 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
     </div>
     </div></div>
     
-    <div class="list-head"><b class="sec-name" id="secName"></b><button type="button" class="trade-tg" id="tradeBtn" aria-pressed="false" hidden>Trade</button><span class="n" id="count"></span><button class="btn primary" id="newBtn" disabled>새 일간</button></div>
+    <div class="list-head"><b class="sec-name" id="secName"></b><span class="n" id="count"></span><button class="btn primary" id="newBtn" disabled>새 일간</button></div>
     <ul class="list" id="list"></ul>
     <div class="tabs-dock"><nav class="tabs" id="tabs" role="tablist" aria-label="문서 구분">
       <button type="button" role="tab" data-s="fav" aria-label="즐겨찾기" title="즐겨찾기">★</button>
+      <button type="button" role="tab" data-s="trade" title="Weekly Trade: 주간별 데이·스윙 트레이딩 모아보기">W_T</button>
       <button type="button" role="tab" data-s="week">Weekly</button>
       <button type="button" role="tab" data-s="day">Daily</button>
       <button type="button" role="tab" data-s="note">FICC</button>
@@ -498,7 +502,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.21-a · Trade 손익표·연보라</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.24-a · W_T 섹션 분리</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -639,9 +643,8 @@ function hl(text){
 }
 function pnlClass(s){const m=String(s||'').match(/([+\-−▲▼]?)\s*(\d[\d,]*(?:\.\d+)?)/);if(!m)return'';if(!parseFloat(m[2].replace(/,/g,'')))return'';return/[-−▼]/.test(m[1])?'down':'up'}
 function hay(e){return((isWeek(e.date)?e.date+' 주간 weekly ':isNote(e.date)?(e.day||'')+' ficc ':e.date+' daily ')+TEXT_KEYS.map(k=>e[k]||'').join(' ')).toLowerCase()}
-let section='day',wkView='doc',tradeWeek=null;
-try{if(localStorage.getItem('mj-wkview')==='trade')wkView='trade'}catch{}
-try{const s0=localStorage.getItem('mj-section');if(['day','week','fav','note'].includes(s0))section=s0}catch{}
+let section='day',tradeWeek=null;
+try{const s0=localStorage.getItem('mj-section');if(['day','week','fav','note','trade'].includes(s0))section=s0;if(s0==='week'&&localStorage.getItem('mj-wkview')==='trade'){section='trade';localStorage.setItem('mj-section','trade')}localStorage.removeItem('mj-wkview')}catch{}
 const inSection=e=>section==='fav'?!!e.fav:kindOf(e.date)===section;
 const byDate=(a,b)=>{const x=sOf(a),y=sOf(b);return x<y?1:x>y?-1:(b.createdAt||0)-(a.createdAt||0)};
 function filtered(){
@@ -661,11 +664,10 @@ function setStatus(msg,err){const s=$('#status');s.textContent=msg;s.classList.t
 
 /* ================= lists ================= */
 const NEW_LABEL={day:'새 일간',week:'새 주간',note:'새 노트'};
-const tradeMode=()=>section==='week'&&wkView==='trade';
+const tradeMode=()=>section==='trade';
 function renderTabs(){
-  const tb=$('#tradeBtn');tb.hidden=section!=='week';tb.classList.toggle('on',tradeMode());tb.setAttribute('aria-pressed',tradeMode());
   document.querySelectorAll('#tabs button').forEach(x=>{const on=x.dataset.s===section;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});
-  $('#secName').textContent={fav:'★ 즐겨찾기',week:'Weekly',day:'Daily',note:'FICC'}[section];
+  $('#secName').textContent={fav:'★ 즐겨찾기',trade:'Weekly Trade',week:'Weekly',day:'Daily',note:'FICC'}[section];
   const nb=$('#newBtn');nb.hidden=section==='fav'||tradeMode();nb.textContent=NEW_LABEL[section]||'';
 }
 function itemHead(e){
@@ -753,18 +755,10 @@ function renderTrade(){
   sc.querySelectorAll('.trade-date').forEach(b=>b.onclick=()=>{tradeWeek=null;openEntry(b.dataset.d)});
   hydrateImages(sc);
 }
-$('#tradeBtn').onclick=()=>{
-  wkView=wkView==='trade'?'doc':'trade';try{localStorage.setItem('mj-wkview',wkView)}catch{}
-  renderList();$('#list').scrollTop=0;
-  if(!mq.matches){
-    if(wkView==='trade'){const f=tradeWeeks()[0];if(f)openTrade(f.wk)}
-    else if(tradeWeek){tradeWeek=null;const f=filtered()[0];if(f)openEntry(f.date);else renderDoc()}
-  }
-};
 function renderList(){
   renderTabs();
   const tm=tradeMode();$('#list').classList.toggle('trade-mode',tm);$('.list-head').classList.toggle('trade-mode',tm);
-  if(tm){const ul=$('#list');ul.dataset.sec='week';$('.list-head').dataset.sec='week';return renderTradeList()}
+  if(tm){$('#list').dataset.sec='trade';$('.list-head').dataset.sec='trade';return renderTradeList()}
   const arr=filtered(),ul=$('#list');
   ul.dataset.sec=section;$('.list-head').dataset.sec=section;
   const total=entries.filter(inSection).length;
@@ -792,6 +786,7 @@ $('#tabs').addEventListener('click',e=>{
   const b=e.target.closest('button[data-s]');if(!b||b.dataset.s===section)return;
   section=b.dataset.s;try{localStorage.setItem('mj-section',section)}catch{}
   renderList();$('#list').scrollTop=0;
+  if(section==='trade'&&!mq.matches&&!tradeWeek){const f=tradeWeeks()[0];if(f)openTrade(f.wk)}
 });
 
 /* ================= document ================= */
