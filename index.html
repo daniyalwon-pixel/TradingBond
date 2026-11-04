@@ -468,6 +468,16 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 .more-btn[hidden]{display:none}
 
 .clamp-imgs[hidden]{display:none}
+
+/* 주간 손익·승률 */
+.wk-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px 14px 4px}
+.wk-stats .st{border:1px solid var(--rule);border-radius:8px;padding:10px 12px;background:color-mix(in srgb,var(--band3) 18%,var(--paper));display:flex;flex-direction:column;gap:2px;min-width:0}
+.wk-stats .k{font-size:12px;font-weight:600;color:var(--ink2)}
+.wk-stats .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:var(--ink)}
+.wk-stats .v.up{color:var(--up)} .wk-stats .v.down{color:var(--down)}
+.wk-stats .d{font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.wk-note{margin:0;padding:4px 14px 0;font-size:11px;color:var(--ink3)}
+@media (max-width:820px){.wk-stats{gap:6px;padding:10px 10px 2px}.wk-stats .st{padding:8px}.wk-stats .v{font-size:18px}.wk-note{padding:4px 10px 0}}
 </style>
 </head>
 <body>
@@ -560,7 +570,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.04-d · 복기 사진도 접기</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.05-a · 주간 합산 손익·승률</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -780,9 +790,18 @@ async function openTrade(wk){
   renderDoc();renderList();$('#scroll').scrollTop=0;
 }
 // "1.-0.9백 2.+0.3백" 처럼 번호 매긴 매매별로 나눠 각각 색칠
+const pnlLines=text=>String(text||'').split('\n').map(line=>line.split(/(?<=\S)\s+(?=\d{1,2}[.)]\s*[+\-−▲▼\d])/));
+// 매매 한 건의 손익을 '백(백만원)' 단위 숫자로. 숫자가 없으면 null
+function pnlValue(seg){
+  const m=String(seg||'').replace(NUM_PREFIX,'').match(/([+\-−▲▼]?)\s*(\d[\d,]*(?:\.\d+)?)\s*(억|천만|백만|만|백)?/);
+  if(!m)return null;
+  let v=parseFloat(m[2].replace(/,/g,''));if(isNaN(v))return null;
+  v*={'억':100,'천만':10,'백만':1,'만':0.01,'백':1}[m[3]]??1;
+  return /[-−▼]/.test(m[1])?-v:v;
+}
+const fmtBaek=v=>{const r=Math.round(v*100)/100;return (r>0?'+':'')+r+'백'};
 function colorPnl(text){
-  return String(text||'').split('\n').map(line=>{
-    const segs=line.split(/(?<=\S)\s+(?=\d{1,2}[.)]\s*[+\-−▲▼\d])/);
+  return pnlLines(text).map(segs=>{
     return segs.map(seg=>{const c=pnlClass(seg);return c?`<span class="${c}">${hl(seg)}</span>`:hl(seg)}).join(' ');
   }).join('\n');
 }
@@ -798,6 +817,17 @@ function renderTrade(){
   const panel=(title,p,keys)=>{
     const list=days.filter(d=>keys.some(k=>hasK(d,k)));
     let h=`<section class="trade-panel"><h3 class="trade-group-t">${title}<small>${list.length}일</small></h3>`;
+    if(p==='dt'&&list.length){
+      const vals=list.flatMap(d=>pnlLines(d.dt3).flat().map(pnlValue)).filter(v=>v!==null);
+      const sum=vals.reduce((a,b)=>a+b,0),win=vals.filter(v=>v>0).length,loss=vals.filter(v=>v<0).length,flat=vals.length-win-loss;
+      const rate=win+loss?Math.round(win/(win+loss)*100)+'%':'—';
+      const sc2=sum>0?'up':sum<0?'down':'';
+      h+=`<div class="wk-stats">
+        <div class="st"><span class="k">주간 합산 손익</span><span class="v ${sc2}">${vals.length?fmtBaek(sum):'—'}</span></div>
+        <div class="st"><span class="k">승률</span><span class="v">${rate}</span><span class="d">${win}승 ${loss}패${flat?` · 보합 ${flat}`:''}</span></div>
+        <div class="st"><span class="k">매매</span><span class="v">${vals.length}건</span><span class="d">${list.length}일</span></div>
+      </div><p class="wk-note">'최종손익' 칸의 매매별 손익(1. 2. …)을 백만원(백) 단위로 합산. 승률은 보합을 뺀 이익/손실 매매 기준.</p>`;
+    }
     if(!list.length)h+=`<div class="trade-empty">이 주에는 ${title} 기록이 없습니다.</div>`;
     else{
       h+=`<div class="tp-wrap"><table class="tp tp5"><thead><tr><th>날짜</th><th>최종손익</th><th>매매 대상 및 사이즈</th><th>진입 및 청산</th><th>복기</th></tr></thead><tbody>`;
