@@ -460,6 +460,12 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 
 .trade-panel.legacy{margin-top:16px;border-top:1px solid var(--rule)}
 @media (max-width:820px){.trade-panel.legacy{margin-top:12px}}
+
+.clamp4{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;line-clamp:4;overflow:hidden}
+.clamp4.open{display:block;-webkit-line-clamp:unset;line-clamp:none;overflow:visible}
+.more-btn{margin-top:4px;border:0;background:none;padding:2px 0;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer}
+.more-btn:hover{text-decoration:underline}
+.more-btn[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -552,7 +558,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.04-b · W_T 데이/스윙 패널</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.04-c · W_T 복기 더보기</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -783,6 +789,7 @@ function renderTrade(){
   $('#bar').hidden=true;
   const imgs=ids=>(ids||[]).length?`<div class="thumbs">${ids.map(id=>`<figure class="thumb"><img data-img="${esc(id)}" alt=""></figure>`).join('')}</div>`:'';
   const nil='<span class="nil">—</span>';
+  const clampTxt=(d,k)=>{const t=(d[k]||'').trim();return (t?`<div class="mt clamp4">${hl(t)}</div><button type="button" class="more-btn" hidden>더보기</button>`:'')+imgs(d[k+'Img'])||nil};
   const txt=(d,k,color)=>{const t=(d[k]||'').trim();return (t?`<div class="mt">${color?colorPnl(t):hl(t)}</div>`:'')+imgs(d[k+'Img'])||nil};
   const dateBtn=d=>`<button type="button" class="trade-date" data-d="${d.date}">${md(d.date)} <small>${wd(d.date)}</small></button>`;
   const panel=(title,p,keys)=>{
@@ -791,7 +798,7 @@ function renderTrade(){
     if(!list.length)h+=`<div class="trade-empty">이 주에는 ${title} 기록이 없습니다.</div>`;
     else{
       h+=`<div class="tp-wrap"><table class="tp tp5"><thead><tr><th>날짜</th><th>최종손익</th><th>매매 대상 및 사이즈</th><th>진입 및 청산</th><th>복기</th></tr></thead><tbody>`;
-      h+=list.map(d=>`<tr><th>${dateBtn(d)}</th><td data-l="최종손익" class="pl">${txt(d,p+'3',true)}</td><td data-l="매매 대상 및 사이즈">${txt(d,p+'1')}</td><td data-l="진입 및 청산">${txt(d,p+'2')}</td><td data-l="복기">${txt(d,p+'4')}</td></tr>`).join('');
+      h+=list.map(d=>`<tr><th>${dateBtn(d)}</th><td data-l="최종손익" class="pl">${txt(d,p+'3',true)}</td><td data-l="매매 대상 및 사이즈">${txt(d,p+'1')}</td><td data-l="진입 및 청산">${txt(d,p+'2')}</td><td data-l="복기">${clampTxt(d,p+'4')}</td></tr>`).join('');
       h+='</tbody></table></div>';
     }
     return h+'</section>';
@@ -813,6 +820,15 @@ function renderTrade(){
   sc.querySelectorAll('.trade-date').forEach(b=>b.onclick=()=>{tradeWeek=null;openEntry(b.dataset.d)});
   setupPager(sc.querySelector('.trade-grid'),sc.querySelector('.trade-pager'));
   hydrateImages(sc);
+  // 복기: 4줄 넘으면 접고 '더보기'
+  const fitMore=()=>sc.querySelectorAll('.clamp4').forEach(el=>{
+    const b=el.nextElementSibling;if(!b||el.classList.contains('open'))return;
+    b.hidden=el.scrollHeight<=el.clientHeight+2;
+  });
+  sc.querySelectorAll('.more-btn').forEach(b=>b.onclick=()=>{const el=b.previousElementSibling;const o=el.classList.toggle('open');b.textContent=o?'접기':'더보기'});
+  requestAnimationFrame(fitMore);
+  if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitMore());sc.querySelectorAll('.clamp4').forEach(el=>ro.observe(el))}
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitMore);
 }
 function renderList(){
   renderTabs();
