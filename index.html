@@ -410,6 +410,18 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 
 .tabs button[data-s=trade]{font-size:12px;letter-spacing:.02em}
 .tabs button[data-s=trade].on{color:var(--band3Ink);background:color-mix(in srgb,var(--band3) 70%,var(--paper))}
+
+/* W_T: 유형별 묶음 */
+.trade-group{border:1px solid var(--rule);border-top:0;background:var(--paper)}
+.trade-group-t{margin:0;padding:10px 14px;font-size:15px;font-weight:700;color:var(--band3Ink);background:color-mix(in srgb,var(--band3) 70%,var(--paper));border-bottom:1px solid var(--rule)}
+.trade-group-t small{margin-left:8px;font-size:12px;font-weight:500;opacity:.75}
+.trade-group .trade-day{border:0;border-bottom:1px solid var(--rule)}
+.trade-group .trade-day:last-child{border-bottom:0}
+.trade-group .trade-day>header{padding:8px 14px}
+.tp td.tgt{color:var(--ink)}
+.tp th:nth-child(1){width:84px}
+.tp td{width:auto}
+@media (max-width:820px){.trade-group{border-left:0;border-right:0}.tp{font-size:13px}.tp th,.tp td{padding:6px 7px}.tp tbody th{width:64px}}
 </style>
 </head>
 <body>
@@ -502,7 +514,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.10.28-a · 장전·매매 패널 폭 확대</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.04-a · W_T 유형별 정리·손익 색상</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -641,7 +653,8 @@ function hl(text){
   const re=new RegExp('('+t.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi');
   return text.split(re).map((p,i)=>i%2?'<mark>'+esc(p)+'</mark>':esc(p)).join('');
 }
-function pnlClass(s){const m=String(s||'').match(/([+\-−▲▼]?)\s*(\d[\d,]*(?:\.\d+)?)/);if(!m)return'';if(!parseFloat(m[2].replace(/,/g,'')))return'';return/[-−▼]/.test(m[1])?'down':'up'}
+const NUM_PREFIX=/^\s*\d{1,2}[.)]\s*(?=[+\-−▲▼]|\d+\.\d)/;
+function pnlClass(s){s=String(s||'').replace(NUM_PREFIX,'');const m=String(s||'').match(/([+\-−▲▼]?)\s*(\d[\d,]*(?:\.\d+)?)/);if(!m)return'';if(!parseFloat(m[2].replace(/,/g,'')))return'';return/[-−▼]/.test(m[1])?'down':'up'}
 function hay(e){return((isWeek(e.date)?e.date+' 주간 weekly ':isNote(e.date)?(e.day||'')+' ficc ':e.date+' daily ')+TEXT_KEYS.map(k=>e[k]||'').join(' ')).toLowerCase()}
 let section='day',tradeWeek=null;
 try{const s0=localStorage.getItem('mj-section');if(['day','week','fav','note','trade'].includes(s0))section=s0;if(s0==='week'&&localStorage.getItem('mj-wkview')==='trade'){section='trade';localStorage.setItem('mj-section','trade')}localStorage.removeItem('mj-wkview')}catch{}
@@ -720,6 +733,13 @@ async function openTrade(wk){
   pushDocState('T-'+wk);
   renderDoc();renderList();$('#scroll').scrollTop=0;
 }
+// "1.-0.9백 2.+0.3백" 처럼 번호 매긴 매매별로 나눠 각각 색칠
+function colorPnl(text){
+  return String(text||'').split('\n').map(line=>{
+    const segs=line.split(/(?<=\S)\s+(?=\d{1,2}[.)]\s*[+\-−▲▼\d])/);
+    return segs.map(seg=>{const c=pnlClass(seg);return c?`<span class="${c}">${hl(seg)}</span>`:hl(seg)}).join(' ');
+  }).join('\n');
+}
 function renderTrade(){
   const sc=$('#scroll'),wk=tradeWeek,days=tradeDays(wk);
   $('#bar').hidden=true;
@@ -729,23 +749,30 @@ function renderTrade(){
     ${entries.some(e=>e.date===wk)?`<button type="button" class="btn trade-open-wk">주간 문서</button>`:''}</div>`;
   if(!days.length)html+='<div class="trade-empty">이 주의 Daily 문서에는 데이·스윙 트레이딩 기록이 없습니다.</div>';
   else{
-    const cell=v=>{const t=(v||'').trim();return t?`<td class="${pnlClass(t)}">${hl(t)}</td>`:'<td class="nil">—</td>'};
-    html+=`<section class="trade-pnls"><div class="trade-set-t">일별 최종손익</div><div class="tp-wrap"><table class="tp"><thead><tr><th>날짜</th><th>데이 트레이딩<br><small>최종손익</small></th><th>스윙 트레이딩<br><small>최종손익</small></th></tr></thead><tbody>`
-      +days.map(d=>`<tr><th><button type="button" class="trade-date" data-d="${d.date}">${md(d.date)} <small>${wd(d.date)}</small></button></th>${cell(d.dt3)}${cell(d.sw3)}</tr>`).join('')
+    const cell=v=>{const t=(v||'').trim();return t?`<td class="pl">${colorPnl(t)}</td>`:'<td class="nil">—</td>'};
+    const tcell=v=>{const t=(v||'').trim();return t?`<td class="tgt">${hl(t)}</td>`:'<td class="nil">—</td>'};
+    html+=`<section class="trade-pnls"><div class="trade-set-t">일별 최종손익</div><div class="tp-wrap"><table class="tp"><thead><tr><th>날짜</th><th>데이 트레이딩<br><small>최종손익</small></th><th>데이 트레이딩<br><small>매매 대상 및 사이즈</small></th><th>스윙 트레이딩<br><small>최종손익</small></th></tr></thead><tbody>`
+      +days.map(d=>`<tr><th><button type="button" class="trade-date" data-d="${d.date}">${md(d.date)} <small>${wd(d.date)}</small></button></th>${cell(d.dt3)}${tcell(d.dt1)}${cell(d.sw3)}</tr>`).join('')
       +'</tbody></table></div></section>';
   }
-  for(const d of days){
-    html+=`<section class="trade-day"><header><button type="button" class="trade-date" data-d="${d.date}">${md(d.date)} <small>${wd(d.date)}</small></button>${pnlTxt(d)?`<span class="trade-pnl ${pnlClass(d.pnl)}">${esc(pnlTxt(d))}</span>`:''}</header>`;
-    for(const [title,keys] of TRADE_SETS){
-      const items=keys.map((k,i)=>[k,i]).filter(([k])=>hasK(d,k));
-      if(!items.length)continue;
-      html+=`<div class="trade-set"><div class="trade-set-t">${title}</div>`;
-      for(const [k,i] of items){
-        html+=`<div class="grp-item"><div class="grp-sub">${i+1}. ${GROUP_SUB[i]}</div>${d[k]?`<div class="mt">${hl(d[k])}</div>`:''}${(d[k+'Img']||[]).length?`<div class="thumbs">${d[k+'Img'].map(id=>`<figure class="thumb"><img data-img="${esc(id)}" alt=""></figure>`).join('')}</div>`:''}</div>`;
-      }
-      html+='</div>';
+  const imgs=ids=>(ids||[]).length?`<div class="thumbs">${ids.map(id=>`<figure class="thumb"><img data-img="${esc(id)}" alt=""></figure>`).join('')}</div>`:'';
+  const dayHead=d=>`<header><button type="button" class="trade-date" data-d="${d.date}">${md(d.date)} <small>${wd(d.date)}</small></button></header>`;
+  const groups=TRADE_SETS.map(([title,keys])=>[title,keys,days.filter(d=>keys.some(k=>hasK(d,k)))]);
+  const legacy=days.filter(d=>hasK(d,'exec'));
+  if(legacy.length)groups.push(['매매 실행 (기존 기록)',['exec'],legacy]);
+  for(const [title,keys,list] of groups){
+    if(!list.length)continue;
+    html+=`<section class="trade-group"><h3 class="trade-group-t">${title}<small>${list.length}일</small></h3>`;
+    for(const d of list){
+      html+=`<div class="trade-day">${dayHead(d)}<div class="trade-set">`;
+      keys.forEach((k,i)=>{
+        if(!hasK(d,k))return;
+        const sub=k==='exec'?'':`<div class="grp-sub">${i+1}. ${GROUP_SUB[i]}</div>`;
+        const body=d[k]?`<div class="mt">${i===2&&k!=='exec'?colorPnl(d[k]):hl(d[k])}</div>`:'';
+        html+=`<div class="grp-item">${sub}${body}${imgs(d[k+'Img'])}</div>`;
+      });
+      html+='</div></div>';
     }
-    if(hasK(d,'exec'))html+=`<div class="trade-set"><div class="trade-set-t">매매 실행 (기존 기록)</div><div class="grp-item">${d.exec?`<div class="mt">${hl(d.exec)}</div>`:''}${(d.execImg||[]).length?`<div class="thumbs">${d.execImg.map(id=>`<figure class="thumb"><img data-img="${esc(id)}" alt=""></figure>`).join('')}</div>`:''}</div></div>`;
     html+='</section>';
   }
   html+='</div>';
