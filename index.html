@@ -466,6 +466,8 @@ textarea.title-in{font-size:22px;font-weight:700;padding:12px 14px 4px !importan
 .more-btn{margin-top:4px;border:0;background:none;padding:2px 0;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer}
 .more-btn:hover{text-decoration:underline}
 .more-btn[hidden]{display:none}
+
+.clamp-imgs[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -558,7 +560,7 @@ create policy "own rows" on journal_img for all
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.04-c · W_T 복기 더보기</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.04-d · 복기 사진도 접기</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -789,7 +791,8 @@ function renderTrade(){
   $('#bar').hidden=true;
   const imgs=ids=>(ids||[]).length?`<div class="thumbs">${ids.map(id=>`<figure class="thumb"><img data-img="${esc(id)}" alt=""></figure>`).join('')}</div>`:'';
   const nil='<span class="nil">—</span>';
-  const clampTxt=(d,k)=>{const t=(d[k]||'').trim();return (t?`<div class="mt clamp4">${hl(t)}</div><button type="button" class="more-btn" hidden>더보기</button>`:'')+imgs(d[k+'Img'])||nil};
+  const clampTxt=(d,k)=>{const t=(d[k]||'').trim(),n=(d[k+'Img']||[]).length;if(!t&&!n)return nil;
+    return `<div class="clamp-box" data-n="${n}">${t?`<div class="mt clamp4">${hl(t)}</div>`:''}${n?`<div class="clamp-imgs" hidden>${imgs(d[k+'Img'])}</div>`:''}<button type="button" class="more-btn" hidden>더보기</button></div>`};
   const txt=(d,k,color)=>{const t=(d[k]||'').trim();return (t?`<div class="mt">${color?colorPnl(t):hl(t)}</div>`:'')+imgs(d[k+'Img'])||nil};
   const dateBtn=d=>`<button type="button" class="trade-date" data-d="${d.date}">${md(d.date)} <small>${wd(d.date)}</small></button>`;
   const panel=(title,p,keys)=>{
@@ -820,14 +823,22 @@ function renderTrade(){
   sc.querySelectorAll('.trade-date').forEach(b=>b.onclick=()=>{tradeWeek=null;openEntry(b.dataset.d)});
   setupPager(sc.querySelector('.trade-grid'),sc.querySelector('.trade-pager'));
   hydrateImages(sc);
-  // 복기: 4줄 넘으면 접고 '더보기'
-  const fitMore=()=>sc.querySelectorAll('.clamp4').forEach(el=>{
-    const b=el.nextElementSibling;if(!b||el.classList.contains('open'))return;
-    b.hidden=el.scrollHeight<=el.clientHeight+2;
+  // 복기: 4줄 넘는 글과 사진은 접어두고 '더보기'로 펼치기
+  const moreLabel=box=>{const n=+box.dataset.n;return '더보기'+(n?` · 사진 ${n}`:'')};
+  const fitMore=()=>sc.querySelectorAll('.clamp-box').forEach(box=>{
+    if(box.classList.contains('open'))return;
+    const el=box.querySelector('.clamp4'),b=box.querySelector('.more-btn');
+    const over=!!el&&el.scrollHeight>el.clientHeight+2,hasImg=+box.dataset.n>0;
+    b.hidden=!(over||hasImg);b.textContent=moreLabel(box);
   });
-  sc.querySelectorAll('.more-btn').forEach(b=>b.onclick=()=>{const el=b.previousElementSibling;const o=el.classList.toggle('open');b.textContent=o?'접기':'더보기'});
+  sc.querySelectorAll('.clamp-box .more-btn').forEach(b=>b.onclick=()=>{
+    const box=b.closest('.clamp-box'),o=box.classList.toggle('open');
+    const el=box.querySelector('.clamp4');if(el)el.classList.toggle('open',o);
+    const im=box.querySelector('.clamp-imgs');if(im)im.hidden=!o;
+    b.textContent=o?'접기':moreLabel(box);
+  });
   requestAnimationFrame(fitMore);
-  if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitMore());sc.querySelectorAll('.clamp4').forEach(el=>ro.observe(el))}
+  if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitMore());sc.querySelectorAll('.clamp-box').forEach(el=>ro.observe(el))}
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitMore);
 }
 function renderList(){
