@@ -1,0 +1,9 @@
+# 개인 기록·백업은 공개 저장소에 올리지 않음
+*.json
+*.docx
+*.xlsx
+*.jpg
+*.jpeg
+*.webp
+.DS_Store
+Thumbs.db

@@ -6,7 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="시황 일지">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#15304D">
+<link rel="icon" type="image/png" sizes="64x64" href="icon-64.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>시황 일지</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -569,8 +572,14 @@ create policy "own rows" on journal_img for all
       <p>현재 저장소의 기록과 스크린샷을 JSON 파일 하나로 내보내거나 가져옵니다. Claude 버전에서 내보낸 파일도 가져올 수 있습니다.</p>
       <div class="acts"><button class="btn" id="expBtn">백업 내보내기</button><button class="btn" id="impBtn">백업 가져오기</button></div>
     </div>
+    <div class="sep"></div>
+    <div class="grid">
+      <h3>앱 설치</h3>
+      <p>PC·휴대폰에 앱으로 설치하면 주소창 없는 별도 창으로 열리고, 바탕화면·작업표시줄·홈 화면 아이콘으로 바로 실행할 수 있습니다.</p>
+      <div class="acts"><button class="btn primary" id="installBtn" hidden>이 기기에 앱 설치</button></div>
+    </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.05-a · 주간 합산 손익·승률</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.17-a · 설치형 앱(PWA)</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1408,6 +1417,18 @@ async function boot(){
 }
 if(history.state&&history.state.mj)history.replaceState(null,'');
 boot();
+
+/* ---- 설치형 앱(PWA) ---- */
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+let installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
+window.addEventListener('appinstalled',()=>{installEvt=null;const b=$('#installBtn');if(b)b.hidden=true});
+$('#installBtn').onclick=async()=>{
+  if(!installEvt){alert('브라우저 주소창 오른쪽의 설치 아이콘(⊕ 또는 모니터 모양)을 누르거나, 메뉴 → "앱 설치"를 선택하세요.');return}
+  installEvt.prompt();try{await installEvt.userChoice}catch{}installEvt=null;$('#installBtn').hidden=true;
+};
 </script>
 </body>
 </html>
