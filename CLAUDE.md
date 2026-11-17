@@ -3,7 +3,7 @@
 개인 시황 기록용 단일 파일 웹앱. GitHub Pages로 배포: https://daniyalwon-pixel.github.io/TradingBond/
 
 ## 구조
-- 설치형 앱(PWA): `manifest.webmanifest`, `sw.js`(index.html은 네트워크 우선·오프라인 시 저장본, 같은 출처 정적 파일만 캐시, Supabase·CDN은 통과), 아이콘 `icon-64/192/512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`. 설정 창에 '이 기기에 앱 설치' 버튼. sw.js를 바꾸면 `CACHE` 이름의 버전을 올린다.
+- 설치형 앱(PWA): `manifest.webmanifest`, `sw.js`(index.html은 네트워크 우선·오프라인 시 저장본, 같은 출처 정적 파일만 캐시, Supabase·CDN은 통과), 아이콘 `icon-64/192/512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`. 설정 창에 '이 기기에 앱 설치' 버튼과 `MarketJournal_Desktop_Icon.bat` 링크(앱 설치가 막힌 Windows PC용: Chrome/Edge `--app=` 바로가기를 바탕화면·시작 메뉴에 만들고 `app.ico`를 아이콘으로 씀. .bat은 ASCII만, 본문은 PowerShell -EncodedCommand). sw.js를 바꾸면 `CACHE` 이름의 버전을 올린다.
 - `index.html` 하나에 HTML·CSS·JS가 모두 들어 있다. 빌드 도구 없음. 외부 라이브러리는 supabase-js(UMD, jsdelivr)와 Google Fonts만 사용.
 - 저장소: Supabase(동기화, 기본값) 또는 브라우저 IndexedDB(이 기기에만). 설정 창에서 전환.
   - Supabase 프로젝트 `market-journal` (ap-northeast-2). 테이블 `journal`(user_id, date, data jsonb), `journal_img`(id, user_id, data=dataURL). RLS로 본인 행만 접근.

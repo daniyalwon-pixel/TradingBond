@@ -53,6 +53,7 @@ mark{background:var(--hl);color:inherit;border-radius:2px;padding:0 1px}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--paper)}
 .btn.danger{color:var(--up)}
 .btn:disabled{opacity:.45;cursor:default}
+a.btn{text-decoration:none;display:inline-block;color:var(--ink)}
 .filters{padding:0 16px 10px;display:grid;gap:8px}
 .filters input{width:100%;border:1px solid var(--rule);border-radius:6px;background:var(--bg);padding:7px 10px;font-size:14px}
 .dates{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;color:var(--ink3)}
@@ -576,10 +577,11 @@ create policy "own rows" on journal_img for all
     <div class="grid">
       <h3>앱 설치</h3>
       <p>PC·휴대폰에 앱으로 설치하면 주소창 없는 별도 창으로 열리고, 바탕화면·작업표시줄·홈 화면 아이콘으로 바로 실행할 수 있습니다.</p>
-      <div class="acts"><button class="btn primary" id="installBtn" hidden>이 기기에 앱 설치</button></div>
+      <div class="acts"><button class="btn primary" id="installBtn" hidden>이 기기에 앱 설치</button><a class="btn" href="MarketJournal_Desktop_Icon.bat" download>Windows 바탕화면 아이콘 만들기</a></div>
+      <p>회사 PC처럼 앱 설치가 막혀 있으면 'Windows 바탕화면 아이콘 만들기'로 파일을 받아 더블클릭하세요. 바탕화면·시작 메뉴에 '시황 일지' 아이콘이 생기고, 누르면 주소창 없는 창으로 열립니다.</p>
     </div>
   </div>
-<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.17-a · 설치형 앱(PWA)</p></dialog>
+<p style="padding:0 22px 16px;margin:0;font-size:11px;color:var(--ink3)">앱 버전 2026.11.17-b · 바탕화면 아이콘</p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
